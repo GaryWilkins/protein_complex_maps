@@ -1,4 +1,4 @@
-##Finds optimal parameters for clustering of ppi network##
+# Finds optimal parameters for clustering of ppi network##
 
 import itertools as it
 import multiprocessing as mp
@@ -9,12 +9,13 @@ import sys
 import tempfile as tf
 
 import protein_complex_maps.evaluation.complex_comparison as cc
-#no agglomcluster option; library only appears to work in function as written for Python2.7 and is without support
-#...in Google Colab
+
+
+# no agglomcluster option; library only appears to work in function as written for Python2.7 and is without support
+# ...in Google Colab
 
 
 def cluster(input_network, gold_standard_filename, output_file):
-
     # input_network: Filename of ppi network with optional edge weights (format: id\t id\t weight)
     # gold_standard: Filename of gold standard complexes, one cluster per line, ids tab-separated
     # output_file: Filename of output clusters for best set of parameters
@@ -53,7 +54,7 @@ def cluster(input_network, gold_standard_filename, output_file):
 
     bypassInputArgs = \
         {'input_network': input_network, 'gold_standard_filename': gold_standard_filename,
-          'output_file': output_file, "random_seed": 42, "bootstrap_iter": 10,
+         'output_file': output_file, "random_seed": 42, "bootstrap_iter": 10,
          "bootstrap_fraction": 0.5,
          "clustone_jar": "/My Drive/Colab Notebooks/otherStudies/cluster_one-1.0.jar",
          "clusterone_size": [2, ],
@@ -97,33 +98,32 @@ def cluster(input_network, gold_standard_filename, output_file):
 
     p = mp.Pool(args.procs)
     network_input_list = []
-    for ii, parameters  in enumerate(it.product(size_sweep, density_sweep, fraction_sweep, overlap_sweep,
-                                                seed_method_sweep, inflation_sweep, clixo_alpha_sweep,
-                                                clixo_beta_sweep, cliquesize_sweep, timeout_sweep,
-                                                threshold_score_sweep)):
+    for ii, parameters in enumerate(it.product(size_sweep, density_sweep, fraction_sweep, overlap_sweep,
+                                               seed_method_sweep, inflation_sweep, clixo_alpha_sweep, clixo_beta_sweep,
+                                               cliquesize_sweep, timeout_sweep, threshold_score_sweep)):
         sys.stdout.flush()
-        #kdrew: unpack parameters
+        # kdrew: unpack parameters
         size, density, fraction, overlap, seed_method, inflation, clixo_alpha, clixo_beta, cliquesize, timeout, \
-        threshold_score = parameters
+            threshold_score = parameters
         threshold_score = float(threshold_score)
 
         if threshold_score is None:
-            #kdrew: only take the topN ppis, assumes already sorted network (probably stupidly)
-            sizeOfTopNetwork = int(len(input_network_list)*float(fraction))
+            # kdrew: only take the topN ppis, assumes already sorted network (probably stupidly)
+            sizeOfTopNetwork = int(len(input_network_list) * float(fraction))
             network_list = input_network_list[0:sizeOfTopNetwork]
             threshold_score = float(network_list[-1].split()[2])
         else:
             network_list = []
-            for x in input_network_list:                   
+            for x in input_network_list:
                 if float(x.split()[2]) >= float(threshold_score):
                     network_list.append(x)
                 else:
-                    #kdrew: assuming sorted
+                    # kdrew: assuming sorted
                     break
 
-            fraction = 1.0*len(network_list) / len(input_network_list)
+            fraction = 1.0 * len(network_list) / len(input_network_list)
 
-        #kdrew: cluster network_list
+        # kdrew: cluster network_list
         parameter_dict = dict()
         parameter_dict['network_list'] = network_list
         parameter_dict['ppi_scores'] = ppi_scores
@@ -142,17 +142,17 @@ def cluster(input_network, gold_standard_filename, output_file):
         parameter_dict['twostep_combination'] = args.twostep_combination
         parameter_dict['trim2threshold'] = args.trim2threshold
         parameter_dict['i'] = ii
-        parameter_dict['nodelete'] = args.nodelete 
+        parameter_dict['nodelete'] = args.nodelete
 
-        #kdrew: append to list of parameters for input into multiprocessor map
-        network_input_list.append(parameter_dict) 
+        # kdrew: append to list of parameters for input into multiprocessor map
+        network_input_list.append(parameter_dict)
 
-    #kdrew: call clustering on parameter combinations
+        # kdrew: call clustering on parameter combinations
     cluster_predictions = p.map(cluster_helper, network_input_list)
 
-    #kdrew: iterate through clustering results, returns tuple of prediction and number of iteration (ii)
+    # kdrew: iterate through clustering results, returns tuple of prediction and number of iteration (ii)
     for cluster_prediction, ii in cluster_predictions:
-        print "ii", ii
+        print("ii", ii)
         network_list = network_input_list[ii]['network_list']
         size = network_input_list[ii]['size']
         density = network_input_list[ii]['density']
@@ -169,24 +169,24 @@ def cluster(input_network, gold_standard_filename, output_file):
         trim2threshold = network_input_list[ii]['trim2threshold']
         nodelete = network_input_list[ii]['nodelete']
 
-        print "ii %s, size %s, density %s, overlap %s, seed_method %s, fraction %s, threshold_score %s, " \
-              "inflation %s, clixo_alpha %s, clixo_beta %s, cliquesize %s, timeout %s, twostep_combination: %s, " \
-              "trim2threshold: %s" \
-              % (ii, size, density, overlap, seed_method, fraction, threshold_score,  inflation, clixo_alpha,
-                 clixo_beta, cliquesize, timeout, str(twostep_combination), str(trim2threshold))
+        print("ii %s, size %s, density %s, overlap %s, seed_method %s, fraction %s, threshold_score %s, "
+              "inflation %s, clixo_alpha %s, clixo_beta %s, cliquesize %s, timeout %s, twostep_combination: %s, "
+              "trim2threshold: %s"
+              % (ii, size, density, overlap, seed_method, fraction, threshold_score, inflation, clixo_alpha,
+                 clixo_beta, cliquesize, timeout, str(twostep_combination), str(trim2threshold)))
 
-        #kdrew: compare gold standard vs predicted clusters
-        cplx_comparison = cc.ComplexComparison(gold_standard_complexes, cluster_prediction) 
+        # kdrew: compare gold standard vs predicted clusters
+        cplx_comparison = cc.ComplexComparison(gold_standard_complexes, cluster_prediction)
         cplx_comparison_normalize = cc.ComplexComparison(gold_standard_complexes, cluster_prediction,
                                                          normalize_by_combinations=True, pseudocount=0.00001)
 
-        print cplx_comparison
-        try:  
+        print(cplx_comparison)
+        try:
             metric_dict = dict()
-            metric_dict['acc'] = cplx_comparison.acc() 
-            metric_dict['sensitivity'] = cplx_comparison.sensitivity() 
-            metric_dict['ppv'] = cplx_comparison.ppv() 
-            metric_dict['mmr'] = cplx_comparison.mmr() 
+            metric_dict['acc'] = cplx_comparison.acc()
+            metric_dict['sensitivity'] = cplx_comparison.sensitivity()
+            metric_dict['ppv'] = cplx_comparison.ppv()
+            metric_dict['mmr'] = cplx_comparison.mmr()
             metric_dict['precision_recall_product'] = cplx_comparison.precision_recall_product()
 
             ccmm = cplx_comparison.clique_comparison_metric_mean()
@@ -201,30 +201,30 @@ def cluster(input_network, gold_standard_filename, output_file):
             metric_dict['clique_precision_mean_normalize_weighted'] = ccmm_normalize_weighted['precision_mean']
             metric_dict['clique_recall_mean_normalize_weighted'] = ccmm_normalize_weighted['recall_mean']
         except Exception as e:
-            print e
+            print(e)
             continue
 
-        print "ii %s, size %s, density %s, overlap %s, seed_method %s, fraction %s, threshold_score %s, " \
-              "inflation %s, clixo_alpha %s, clixo_beta %s,cliquesize %s, timeout %s, twostep_combination: %s, " \
-              "trim2threshold: %s, acc %s, sensitivity %s, ppv %s, mmr %s, precision_recall_product %s, " \
-              "clique_precision_mean %s, clique_recall_mean %s, clique_precision_mean_normalize %s, " \
-              "clique_recall_mean_normalize %s, clique_precision_mean_normalize_weighted %s, " \
-              "clique_recall_mean_normalize_weighted %s" \
-              % (ii, size, density, overlap, seed_method, fraction, threshold_score,  inflation, clixo_alpha,
+        print("ii %s, size %s, density %s, overlap %s, seed_method %s, fraction %s, threshold_score %s, "
+              "inflation %s, clixo_alpha %s, clixo_beta %s,cliquesize %s, timeout %s, twostep_combination: %s, "
+              "trim2threshold: %s, acc %s, sensitivity %s, ppv %s, mmr %s, precision_recall_product %s, "
+              "clique_precision_mean %s, clique_recall_mean %s, clique_precision_mean_normalize %s, "
+              "clique_recall_mean_normalize %s, clique_precision_mean_normalize_weighted %s, "
+              "clique_recall_mean_normalize_weighted %s"
+              % (ii, size, density, overlap, seed_method, fraction, threshold_score, inflation, clixo_alpha,
                  clixo_beta, cliquesize, timeout, str(twostep_combination), str(trim2threshold),
                  metric_dict['acc'], metric_dict['sensitivity'], metric_dict['ppv'], metric_dict['mmr'],
                  metric_dict['precision_recall_product'], metric_dict['clique_precision_mean'],
                  metric_dict['clique_recall_mean'], metric_dict['clique_precision_mean_normalize'],
                  metric_dict['clique_recall_mean_normalize'], metric_dict['clique_precision_mean_normalize_weighted'],
-                 metric_dict['clique_recall_mean_normalize_weighted'])
+                 metric_dict['clique_recall_mean_normalize_weighted']))
 
-        #kdrew: bootstrap by resampling portions of network
-        sizeOfBootstrap = int(len(network_list)*args.bootstrap_fraction)
-        #kdrew: generate k shuffled networks
-        shuffled_networks = [ sorted( network_list, key=lambda k: random.random() ) for i in range(args.bootstrap_iter)]
-        #kdrew: split shuffled networks into partitions based on size of bootstrap
-        bootstrapped_networks = [ sn[:sizeOfBootstrap] for sn in shuffled_networks ]
-        bootstrapped_test_networks = [ sn[sizeOfBootstrap:] for sn in shuffled_networks ]
+        # kdrew: bootstrap by resampling portions of network
+        sizeOfBootstrap = int(len(network_list) * args.bootstrap_fraction)
+        # kdrew: generate k shuffled networks
+        shuffled_networks = [sorted(network_list, key=lambda k: random.random()) for i in range(args.bootstrap_iter)]
+        # kdrew: split shuffled networks into partitions based on size of bootstrap
+        bootstrapped_networks = [sn[:sizeOfBootstrap] for sn in shuffled_networks]
+        bootstrapped_test_networks = [sn[sizeOfBootstrap:] for sn in shuffled_networks]
 
         multiproc_input = []
         for i, boot_net in enumerate(bootstrapped_networks):
@@ -246,22 +246,22 @@ def cluster(input_network, gold_standard_filename, output_file):
             parameter_dict['twostep_combination'] = twostep_combination
             parameter_dict['trim2threshold'] = trim2threshold
             parameter_dict['i'] = i
-            parameter_dict['nodelete'] = nodelete 
+            parameter_dict['nodelete'] = nodelete
             multiproc_input.append(parameter_dict)
 
         bootstrapped_cluster_predictions = p.map(cluster_helper, multiproc_input)
 
-        #kdrew: compare full clustered set vs bootstrapped clusters
+        # kdrew: compare full clustered set vs bootstrapped clusters
         multiproc_input = [(cluster_prediction, predicted_clusters, bootstrapped_test_networks[i])
                            for predicted_clusters, i in bootstrapped_cluster_predictions]
-        bootstrap_cplx_cmp_metrics = p.map(comparison_helper, multiproc_input) 
+        bootstrap_cplx_cmp_metrics = p.map(comparison_helper, multiproc_input)
         for boot_cmp in bootstrap_cplx_cmp_metrics:
-            print "bootstrapped: ii %s, size %s, density %s, overlap %s, seed_method %s, fraction %s, " \
-                  "threshold_score %s, inflation %s, clixo_alpha %s, clixo_beta %s, cliquesize %s, timeout %s, " \
-                  "twostep_combination %s, trim2threshold: %s,  acc %s, sensitivity %s, ppv %s, mmr %s, " \
-                  "ppi_recovered %s, precision_recall_product %s, clique_precision_mean %s, clique_recall_mean %s, " \
-                  "clique_precision_mean_normalize %s, clique_recall_mean_normalize %s, " \
-                  "clique_precision_mean_normalize_weighted %s, clique_recall_mean_normalize_weighted %s" \
+            print("bootstrapped: ii %s, size %s, density %s, overlap %s, seed_method %s, fraction %s, "
+                  "threshold_score %s, inflation %s, clixo_alpha %s, clixo_beta %s, cliquesize %s, timeout %s, "
+                  "twostep_combination %s, trim2threshold: %s,  acc %s, sensitivity %s, ppv %s, mmr %s, "
+                  "ppi_recovered %s, precision_recall_product %s, clique_precision_mean %s, clique_recall_mean %s, "
+                  "clique_precision_mean_normalize %s, clique_recall_mean_normalize %s, "
+                  "clique_precision_mean_normalize_weighted %s, clique_recall_mean_normalize_weighted %s"
                   % (ii, size, density, overlap, seed_method, fraction, threshold_score, inflation, clixo_alpha,
                      clixo_beta, cliquesize, timeout, str(twostep_combination), str(trim2threshold), boot_cmp['acc'],
                      boot_cmp['sensitivity'], boot_cmp['ppv'], boot_cmp['mmr'], boot_cmp['percent_ppi_recovered'],
@@ -269,9 +269,9 @@ def cluster(input_network, gold_standard_filename, output_file):
                      boot_cmp['clique_recall_mean'], metric_dict['clique_precision_mean_normalize'],
                      metric_dict['clique_recall_mean_normalize'],
                      metric_dict['clique_precision_mean_normalize_weighted'],
-                     metric_dict['clique_recall_mean_normalize_weighted'])
+                     metric_dict['clique_recall_mean_normalize_weighted']))
 
-        #kdrew: keeping track of the best parameter set
+        # kdrew: keeping track of the best parameter set
         if best_eval is None or best_eval < metric_dict[args.eval_metric]:
             best_eval = metric_dict[args.eval_metric]
             best_size = size
@@ -289,27 +289,27 @@ def cluster(input_network, gold_standard_filename, output_file):
             best_twostep_combination = twostep_combination
             best_trim2threshold = trim2threshold
             best_cluster_prediction = cluster_prediction
-            print "best ii: %s size: %s density: %s overlap: %s seed_method: %s fraction: %s threshold_score: %s " \
-                  "inflation: %s clixo_alpha: %s, clixo_beta: %s,cliquesize: %s timeout: %s " \
-                  "twostep_combination: %s, trim2threshold: %s, numOfClusters: %s" \
+            print("best ii: %s size: %s density: %s overlap: %s seed_method: %s fraction: %s threshold_score: %s "
+                  "inflation: %s clixo_alpha: %s, clixo_beta: %s,cliquesize: %s timeout: %s "
+                  "twostep_combination: %s, trim2threshold: %s, numOfClusters: %s"
                   % (best_ii, best_size, best_density, best_overlap, best_seed_method, best_fraction,
                      best_threshold_score, best_inflation, best_clixo_alpha, best_clixo_beta, best_cliquesize,
-                     best_timeout, str(best_twostep_combination), str(trim2threshold), len(best_cluster_prediction))
+                     best_timeout, str(best_twostep_combination), str(trim2threshold), len(best_cluster_prediction)))
 
-        #kdrew: output best cluster prediction
+        # kdrew: output best cluster prediction
         if args.output_file is not None and args.output_all:
             output_filename = "%s.ii%s.%s" % (".".join(args.output_file.split('.')[:-1]), ii,
                                               args.output_file.split('.')[-1])
-            with open (output_filename, "w") as output_file:
+            with open(output_filename, "w") as output_file:
                 for cluster in cluster_prediction:
                     output_file.write(' '.join(cluster))
                     output_file.write("\n")
 
-    ##kdrew: only take the topN ppis, assumes already sorted network (probably stupidly)
-    ##kdrew: cluster network_list
-    #kdrew: output best cluster prediction
+    # kdrew: only take the topN ppis, assumes already sorted network (probably stupidly)
+    # kdrew: cluster network_list
+    # kdrew: output best cluster prediction
     if args.output_file is not None:
-        with open (args.output_file, "w") as output_file:
+        with open(args.output_file, "w") as output_file:
             for cluster in best_cluster_prediction:
                 output_file.write(' '.join(cluster))
                 output_file.write("\n")
@@ -317,13 +317,13 @@ def cluster(input_network, gold_standard_filename, output_file):
     p.close()
     p.join()
 
-#kdrew: helper function that compares two sets of complexes/clusters, for use in multiprocessor
-#kdrew: first parameter in tuple is the gold standard and second is the predicted clusters
-def comparison_helper(parameter_tuple):
 
+# kdrew: helper function that compares two sets of complexes/clusters, for use in multiprocessor
+# kdrew: first parameter in tuple is the gold standard and second is the predicted clusters
+def comparison_helper(parameter_tuple):
     gold_std = parameter_tuple[0]
     pred_clst = parameter_tuple[1]
-    #kdrew: test_net is the other half of the bootstrap which is used for testing
+    # kdrew: test_net is the other half of the bootstrap which is used for testing
     test_net = parameter_tuple[2]
     ppi_recovered_count = 0
     for ppi in test_net:
@@ -332,18 +332,18 @@ def comparison_helper(parameter_tuple):
         for clst in pred_clst:
             if prot1 in clst and prot2 in clst:
                 ppi_recovered_count += 1
-                #kdrew: only count the ppi once if found in cluster
+                # kdrew: only count the ppi once if found in cluster
                 break
 
-    cplx_cmp = cc.ComplexComparison(gold_std, pred_clst) 
-    cplx_cmp_normalize = cc.ComplexComparison(gold_std, pred_clst, normalize_by_combinations=True, pseudocount=0.00001) 
+    cplx_cmp = cc.ComplexComparison(gold_std, pred_clst)
+    cplx_cmp_normalize = cc.ComplexComparison(gold_std, pred_clst, normalize_by_combinations=True, pseudocount=0.00001)
 
     d = dict()
     d['acc'] = cplx_cmp.acc()
     d['sensitivity'] = cplx_cmp.sensitivity()
     d['ppv'] = cplx_cmp.ppv()
     d['mmr'] = cplx_cmp.mmr()
-    d['percent_ppi_recovered'] = (1.0*ppi_recovered_count) / len(test_net)
+    d['percent_ppi_recovered'] = (1.0 * ppi_recovered_count) / len(test_net)
     d['precision_recall_product'] = cplx_cmp.precision_recall_product()
 
     ccmm = cplx_cmp.clique_comparison_metric_mean()
@@ -360,8 +360,8 @@ def comparison_helper(parameter_tuple):
 
     return d
 
-def cluster_helper(parameter_dict):
 
+def cluster_helper(parameter_dict):
     input_network_list = parameter_dict['network_list']
     ppi_scores = parameter_dict['ppi_scores']
     args = parameter_dict['args']
@@ -373,7 +373,7 @@ def cluster_helper(parameter_dict):
     threshold_score = parameter_dict['threshold_score']
     i = parameter_dict['i']
 
-    #kdrew: added some defaults, might want to think harder about the others
+    # kdrew: added some defaults, might want to think harder about the others
     clixo_alpha = parameter_dict.get('clixo_alpha', None)
     clixo_beta = parameter_dict.get('clixo_beta', None)
     inflation = parameter_dict.get('inflation', None)
@@ -383,45 +383,45 @@ def cluster_helper(parameter_dict):
     nodelete = parameter_dict.get('nodelete', False)
     twostep_combination = parameter_dict['twostep_combination']
 
-    #kdrew: make temp directory if does not exist
+    # kdrew: make temp directory if does not exist
     if not os.path.exists(args.temp_dir) and args.temp_dir is not None:
         os.makedirs(args.temp_dir)
 
-    #kdrew: create temp file for bootstrapped input network, clusterone requires a file input
+    # kdrew: create temp file for bootstrapped input network, clusterone requires a file input
     fileTemp = tf.NamedTemporaryFile(delete=False, dir=args.temp_dir)
     dirTemp = tf.mkdtemp(dir=args.temp_dir)
     try:
-        #kdrew: write input_network or bootstrapped input network to temp file
-        #fileTemp.write(input_network_str)
+        # kdrew: write input_network or bootstrapped input network to temp file
+        # fileTemp.write(input_network_str)
         for bstrap_ppi in input_network_list:
             fileTemp.write(bstrap_ppi)
         fileTemp.close()
 
         if twostep_combination[0] == 'clusterone':
-            #kdrew: run clustering
+            # kdrew: run clustering
             proc = sp.Popen(['java', '-jar', args.clustone_jar, fileTemp.name, '-s', size, '-d', density,
                              '--max-overlap', overlap, '--seed-method', seed_method], stdout=sp.PIPE, stderr=sp.PIPE)
             clust_out, err = proc.communicate()
-            #kdrew: probably should do some error checking
-            #kdrew: take output of cluster one (predicted clusters) and store them into list
+            # kdrew: probably should do some error checking
+            # kdrew: take output of cluster one (predicted clusters) and store them into list
             predicted_clusters = []
             for line in clust_out.split('\n'):
-                if len(line.split() ) > 0:
+                if len(line.split()) > 0:
                     predicted_clusters.append(line.split())
 
         elif twostep_combination[0] == 'cfinder':
             proc = sp.Popen([args.cfinder_exe, '-l', args.cfinder_license, '-i', fileTemp.name, '-o',
-                             dirTemp, '-k', cliquesize, '-t', timeout ], stdout=sp.PIPE, stderr=sp.PIPE)
+                             dirTemp, '-k', cliquesize, '-t', timeout], stdout=sp.PIPE, stderr=sp.PIPE)
             clust_out, err = proc.communicate()
-            print dirTemp
+            print(dirTemp)
             predicted_clusters = []
             try:
-                cfinder_communities_file = open("%s/k=%s/communities" % (dirTemp,cliquesize),'rb')
+                cfinder_communities_file = open("%s/k=%s/communities" % (dirTemp, cliquesize), 'rb')
                 for line in cfinder_communities_file.readlines():
-                    if len(line.split() ) > 0 and '#' not in line:
+                    if len(line.split()) > 0 and '#' not in line:
                         predicted_clusters.append(line.split(':')[1].split())
             except (IOError, OSError) as e:
-                print e
+                print(e)
 
         elif twostep_combination[0] == 'clixo':
             proc = sp.Popen([args.clixo_bin, fileTemp.name, clixo_alpha, clixo_beta], stdout=sp.PIPE, stderr=sp.PIPE)
@@ -438,23 +438,23 @@ def cluster_helper(parameter_dict):
         else:
             os.remove(fileTemp.name)
 
-    print "finished clustering phase1"
+    print("finished clustering phase1")
     sys.stdout.flush()
     if len(twostep_combination) >= 2:
         if twostep_combination[1] == 'mcl':
-            print "MCL"
-            #kdrew: converted inflation into str for use on commandline but if None check against str(None)
+            print("MCL")
+            # kdrew: converted inflation into str for use on commandline but if None check against str(None)
             if inflation != str(None):
                 mcl_clusters = []
-                #kdrew: for each predicted cluster, recluster using MCL
+                # kdrew: for each predicted cluster, recluster using MCL
                 for clust in predicted_clusters:
-                    #kdrew: for every pair in cluster find edge weight in input_network_list(?)
+                    # kdrew: for every pair in cluster find edge weight in input_network_list(?)
                     fileTemp = tf.NamedTemporaryFile(delete=False, dir=args.temp_dir)
                     outTemp = tf.NamedTemporaryFile(delete=False, dir=args.temp_dir)
                     try:
-                        for prot1, prot2 in it.combinations(clust,2):
+                        for prot1, prot2 in it.combinations(clust, 2):
                             try:
-                                ppi_score = ppi_scores[frozenset([prot1,prot2])] 
+                                ppi_score = ppi_scores[frozenset([prot1, prot2])]
                                 if ppi_score < threshold_score:
                                     ppi_score = 0.0
                             except KeyError:
@@ -466,7 +466,7 @@ def cluster_helper(parameter_dict):
                         proc = sp.Popen([args.mcl_bin, fileTemp.name, '--abc', '-o', outTemp.name, '-I', inflation],
                                         stdout=sp.PIPE, stderr=sp.PIPE)
                         mcl_out, err = proc.communicate()
-                        outfile = open(outTemp.name,"rb")
+                        outfile = open(outTemp.name, "rb")
                         for line in outfile.readlines():
                             mcl_clusters.append(line.split())
                         outfile.close()
@@ -506,12 +506,12 @@ def cluster_helper(parameter_dict):
     if trim2threshold:
         predicted_clusters = trim_clusters2threshold(predicted_clusters, threshold_score, ppi_scores)
 
-    #kdrew: TODO merge complexes to elminiate redundancy
-    #kdrew: use complex_merge.merge_complexes with merge_threshold 1.0
+    # kdrew: TODO merge complexes to elminiate redundancy
+    # kdrew: use complex_merge.merge_complexes with merge_threshold 1.0
     return predicted_clusters, i
 
-def trim_clusters2threshold(predicted_clusters, threshold_score, ppi_scores):
 
+def trim_clusters2threshold(predicted_clusters, threshold_score, ppi_scores):
     trimed_clusters = []
     for clust in predicted_clusters:
         trimed_clust = []
@@ -520,24 +520,24 @@ def trim_clusters2threshold(predicted_clusters, threshold_score, ppi_scores):
             for prot2 in clust:
                 if prot1 != prot2:
                     try:
-                        prot1_max_score = max( prot1_max_score, ppi_scores[frozenset([prot1,prot2])] )
+                        prot1_max_score = max(prot1_max_score, ppi_scores[frozenset([prot1, prot2])])
                     except KeyError:
                         continue
             if prot1_max_score < threshold_score:
-                print "removing prot1: %s max score: %s" % (prot1, prot1_max_score)
+                print("removing prot1: %s max score: %s" % (prot1, prot1_max_score))
             else:
                 trimed_clust.append(prot1)
-        if len(trimed_clust) >  1:
+        if len(trimed_clust) > 1:
             trimed_clusters.append(trimed_clust)
 
     return trimed_clusters
+
 
 class Dict2Class(object):
     def __init__(self, my_dict):
         for key in my_dict:
             setattr(self, key, my_dict[key])
 
+
 if __name__ == "__main__":
-    cluster()
-
-
+    cluster(input_network, gold_standard_filename, output_file)
