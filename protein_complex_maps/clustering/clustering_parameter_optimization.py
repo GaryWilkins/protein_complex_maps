@@ -13,7 +13,7 @@ import protein_complex_maps.evaluation.complex_comparison as cc
 #...in Google Colab
 
 
-def main(input_network, gold_standard_filename, output_file):
+def cluster(input_network, gold_standard_filename, output_file):
 
     # input_network: Filename of ppi network with optional edge weights (format: id\t id\t weight)
     # gold_standard: Filename of gold standard complexes, one cluster per line, ids tab-separated
@@ -538,6 +538,6 @@ class Dict2Class(object):
             setattr(self, key, my_dict[key])
 
 if __name__ == "__main__":
-    main()
+    cluster()
 
 
