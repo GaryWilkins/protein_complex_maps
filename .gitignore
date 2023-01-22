@@ -1,3 +1,4 @@
+*.DS_STORE
 *.pyc
 *.swp
 *.swo
@@ -7,4 +8,13 @@ tmp
 tmp*
 *.fasta
 *.Rhistory
-
+*.idea
+bin/
+conda-meta/
+include/
+lib/
+share/
+ssl/
+AIM_H_SAPIENS/
+CFinder-2.0.6--1448/
+cluster_one-1.0.jar
